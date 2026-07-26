@@ -69,8 +69,6 @@
 - **배포**
   - Frontend → [Vercel](https://vercel.com)
   - Backend(실시간 채팅 서버) → [Render](https://render.com)
-- **디자인**: Claude Design (프로토타입) → Claude Code (구현)
-
 ---
 
 ## 🌐 배포 구조
