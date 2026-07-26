@@ -1,3 +1,5 @@
+export const BOOM_LIFETIME_MS = 2000
+
 const COLORS = ['#ffb3f6', '#7aa0ff', '#333333']
 
 // star / spiky-star / diamond outlines, normalized to a 0-36 viewBox
@@ -48,5 +50,5 @@ export function boom(layer, originX, originY) {
 
   setTimeout(() => {
     particles.forEach(({ el }) => el.remove())
-  }, 2000)
+  }, BOOM_LIFETIME_MS)
 }

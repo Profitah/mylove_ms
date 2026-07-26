@@ -409,6 +409,12 @@
   display: inline-flex;
 }
 
+.boom-contain.is-bursting {
+  /* Own stacking context, raised above sibling gift cards, so an outward
+     particle spray isn't painted underneath a neighboring card's button. */
+  z-index: 2;
+}
+
 .gift-options .boom-contain {
   flex: 1;
   display: flex;
