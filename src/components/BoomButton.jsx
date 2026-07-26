@@ -4,7 +4,9 @@ import { boom, BOOM_LIFETIME_MS } from '../utils/boom'
 // Drop-in <button> replacement that bursts a shower of little confetti
 // shapes from the click point. Used on the 선물하기 tab's action buttons.
 // The particle layer is a sibling (not a child) of the button, painted
-// underneath it, so the burst never covers the button's own label.
+// above it (pointer-events: none so clicks still reach the button)
+// so the burst stays visible instead of hiding under the button's
+// own opaque background.
 export default function BoomButton({ className, onClick, children, ...rest }) {
   const containerRef = useRef(null)
   const layerRef = useRef(null)

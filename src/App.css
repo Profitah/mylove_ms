@@ -430,7 +430,9 @@
   inset: 0;
   overflow: visible;
   pointer-events: none;
-  z-index: 0;
+  /* Above .boom-btn: particles that never leave the button's own opaque
+     background would otherwise render invisibly underneath it. */
+  z-index: 2;
 }
 
 .boom-particle {
