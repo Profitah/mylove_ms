@@ -6,7 +6,13 @@
 // duplicate connection behind. A module-level singleton sidesteps that —
 // React components just subscribe/unsubscribe to it.
 
-const WS_URL = `ws://${window.location.hostname}:8787`
+// In production, point this at the deployed chat server's wss:// URL via
+// VITE_WS_URL (e.g. Railway/Render). Locally, with no env var set, fall back
+// to the dev server on :8787, matching the page's own protocol so this also
+// works when testing over LAN from a phone (http://192.168.x.x:5173).
+const WS_URL =
+  import.meta.env.VITE_WS_URL ||
+  `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.hostname}:8787`
 const RECONNECT_DELAY = 2000
 
 let socket = null

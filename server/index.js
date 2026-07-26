@@ -1,7 +1,10 @@
 import { WebSocketServer } from 'ws'
 import { randomUUID } from 'node:crypto'
+import { RingBuffer } from './ringBuffer.js'
 
-const PORT = process.env.CHAT_PORT || 8787
+// Hosting platforms (Railway/Render/etc.) inject PORT and expect the app to
+// listen on it; CHAT_PORT is for manual/local overrides, 8787 is the plain-local default.
+const PORT = process.env.PORT || process.env.CHAT_PORT || 8787
 const MAX_HISTORY = 50
 const MAX_MESSAGE_LENGTH = 500
 
@@ -21,7 +24,7 @@ function randomColor() {
 
 const wss = new WebSocketServer({ port: PORT })
 const clients = new Map() // ws -> { id, nickname, color }
-const history = []
+const history = new RingBuffer(MAX_HISTORY)
 
 function broadcast(payload) {
   const raw = JSON.stringify(payload)
@@ -32,7 +35,6 @@ function broadcast(payload) {
 
 function pushHistory(entry) {
   history.push(entry)
-  if (history.length > MAX_HISTORY) history.shift()
 }
 
 wss.on('connection', (ws) => {
@@ -45,7 +47,7 @@ wss.on('connection', (ws) => {
     JSON.stringify({
       type: 'init',
       selfId: id,
-      messages: history,
+      messages: history.toArray(),
       participantCount: clients.size,
     })
   )
