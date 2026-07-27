@@ -9,12 +9,14 @@ import { giftOptions, INITIAL_POINTS } from '../src/data/seed.js'
 // Hosting platforms (Railway/Render/etc.) inject PORT and expect the app to
 // listen on it; CHAT_PORT is for manual/local overrides, 8787 is the plain-local default.
 const PORT = process.env.PORT || process.env.CHAT_PORT || 8787
-const MAX_HISTORY = 50
-const MAX_MESSAGE_LENGTH = 500
+const MAX_HISTORY = 30
+const MAX_MESSAGE_LENGTH = 804
+
+const DATA_DIR = path.dirname(fileURLToPath(import.meta.url))
 
 // All connected clients share one points pool. Persisted to disk so a server
 // restart doesn't reset everyone back to INITIAL_POINTS.
-const POINTS_FILE = path.join(path.dirname(fileURLToPath(import.meta.url)), 'points.json')
+const POINTS_FILE = path.join(DATA_DIR, 'points.json')
 
 function loadPoints() {
   try {
@@ -29,6 +31,22 @@ function savePoints() {
 }
 
 let points = loadPoints()
+
+// Recent chat/system messages, persisted the same way so a restart doesn't
+// wipe the conversation.
+const CHAT_HISTORY_FILE = path.join(DATA_DIR, 'chatHistory.json')
+
+function loadHistoryEntries() {
+  try {
+    return JSON.parse(readFileSync(CHAT_HISTORY_FILE, 'utf-8'))
+  } catch {
+    return []
+  }
+}
+
+function saveHistory() {
+  writeFileSync(CHAT_HISTORY_FILE, JSON.stringify(history.toArray()))
+}
 
 const ADJECTIVES = ['노란', '초록', '파란', '보라', '분홍', '주황', '하얀', '까만']
 const NOUNS = ['민들레', '나뭇잎', '구름', '고양이', '토끼', '바람', '고슴도치', '수달']
@@ -47,6 +65,7 @@ function randomColor() {
 const wss = new WebSocketServer({ port: PORT })
 const clients = new Map() // ws -> { id, nickname, color }
 const history = new RingBuffer(MAX_HISTORY)
+for (const entry of loadHistoryEntries()) history.push(entry)
 
 function broadcast(payload) {
   const raw = JSON.stringify(payload)
@@ -57,6 +76,7 @@ function broadcast(payload) {
 
 function pushHistory(entry) {
   history.push(entry)
+  saveHistory()
 }
 
 wss.on('connection', (ws) => {

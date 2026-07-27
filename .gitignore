@@ -316,8 +316,9 @@ FakesAssemblies/
 node_modules/
 dist/
 
-# Persisted shared points pool (runtime data, not source)
+# Persisted shared points pool / chat history (runtime data, not source)
 server/points.json
+server/chatHistory.json
 
 # Vite env files (local secrets/URLs) — .env.example stays tracked
 .env.local
