@@ -17,7 +17,7 @@ export default function App() {
 
   const handleGift = (option) => {
     gift(option)
-    addSystemMessage(`나: ${option.label}(을)를 선물했어요! 🎁`)
+    addSystemMessage(`${option.label}(을)를 선물했어요! 🎁`)
   }
 
   return (

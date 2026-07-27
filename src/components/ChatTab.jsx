@@ -20,7 +20,7 @@ export default function ChatTab({ messages, onSend, participantCount, connected 
         {messages.map((msg) =>
           msg.system ? (
             <div key={msg.id} className="system-message">
-              {msg.text}
+              {msg.sender ? `${msg.isMe ? '나' : msg.sender}: ${msg.text}` : msg.text}
             </div>
           ) : (
             <div key={msg.id} className={`msg-row${msg.isMe ? ' me' : ''}`}>

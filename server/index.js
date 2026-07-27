@@ -132,7 +132,7 @@ wss.on('connection', (ws) => {
     if (data.type === 'announce' && typeof data.text === 'string') {
       const text = data.text.trim().slice(0, MAX_MESSAGE_LENGTH)
       if (!text) return
-      const notice = { type: 'system', id: randomUUID(), text }
+      const notice = { type: 'system', id: randomUUID(), text, senderId: id, sender: nickname }
       pushHistory(notice)
       broadcast(notice)
       return

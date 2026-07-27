@@ -28,7 +28,13 @@ const pointsListeners = new Set()
 
 function normalize(entry) {
   if (entry.type === 'system') {
-    return { id: entry.id, system: true, text: entry.text }
+    return {
+      id: entry.id,
+      system: true,
+      text: entry.text,
+      sender: entry.sender,
+      isMe: entry.senderId != null && entry.senderId === selfId,
+    }
   }
   return {
     id: entry.id,
