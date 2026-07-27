@@ -21,7 +21,7 @@ export default function GiftTab({ points, onMow, onGift }) {
 
   const handleMow = () => {
     onMow()
-    setFeedback('좋았어, 돈이 생겼다! (+10P)')
+    setFeedback('좋았어, 돈이 생겼다! (+1000P)')
     setPulse(true)
   }
 

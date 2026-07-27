@@ -119,7 +119,7 @@ wss.on('connection', (ws) => {
     }
 
     if (data.type === 'mow') {
-      points += 10
+      points += 1000
       savePoints()
       broadcast({ type: 'points', points })
       return
