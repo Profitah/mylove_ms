@@ -54,7 +54,7 @@ export default function GiftTab({ points, onMow, onGift }) {
             제초하기
           </button>
         </div>
-        {feedback && <div className="feedback">{feedback}</div>}
+        <div className="feedback">{feedback}</div>
       </div>
 
       <div className="gift-options">
