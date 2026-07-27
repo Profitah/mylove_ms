@@ -4,19 +4,19 @@ import BottomNav from './components/BottomNav'
 import ChatTab from './components/ChatTab'
 import GiftTab from './components/GiftTab'
 import { useChatMessages } from './hooks/useChatMessages'
-import { INITIAL_POINTS } from './data/seed'
+import { usePoints } from './hooks/usePoints'
 import './App.css'
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('chat')
-  const [points, setPoints] = useState(INITIAL_POINTS)
+  const { points, mow, gift } = usePoints()
   const { messages, sendMessage, addSystemMessage, participantCount, connected } =
     useChatMessages()
 
-  const handleMow = () => setPoints((p) => p + 10)
+  const handleMow = () => mow()
 
   const handleGift = (option) => {
-    setPoints((p) => p - option.price)
+    gift(option)
     addSystemMessage(`나: ${option.label}(을)를 선물했어요! 🎁`)
   }
 

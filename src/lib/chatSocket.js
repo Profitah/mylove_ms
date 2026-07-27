@@ -20,9 +20,11 @@ let selfId = null
 let connected = false
 let participantCount = 0
 let history = []
+let points = 0
 
 const messageListeners = new Set()
 const connectionListeners = new Set()
+const pointsListeners = new Set()
 
 function normalize(entry) {
   if (entry.type === 'system') {
@@ -45,6 +47,10 @@ function emitConnection() {
   connectionListeners.forEach((fn) => fn({ connected, participantCount }))
 }
 
+function emitPoints() {
+  pointsListeners.forEach((fn) => fn(points))
+}
+
 function connect() {
   if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) {
     return
@@ -64,7 +70,9 @@ function connect() {
       selfId = data.selfId
       participantCount = data.participantCount
       history = data.messages.map(normalize)
+      points = data.points
       emitConnection()
+      emitPoints()
       history.forEach(emitMessage)
       return
     }
@@ -75,6 +83,12 @@ function connect() {
       if (typeof data.participantCount === 'number') participantCount = data.participantCount
       emitMessage(msg)
       emitConnection()
+      return
+    }
+
+    if (data.type === 'points') {
+      points = data.points
+      emitPoints()
     }
   }
 
@@ -90,7 +104,7 @@ function connect() {
 connect()
 
 export function getSnapshot() {
-  return { messages: history.slice(), connected, participantCount }
+  return { messages: history.slice(), connected, participantCount, points }
 }
 
 export function subscribeMessages(fn) {
@@ -103,6 +117,11 @@ export function subscribeConnection(fn) {
   return () => connectionListeners.delete(fn)
 }
 
+export function subscribePoints(fn) {
+  pointsListeners.add(fn)
+  return () => pointsListeners.delete(fn)
+}
+
 export function sendChat(text) {
   if (socket && socket.readyState === WebSocket.OPEN) {
     socket.send(JSON.stringify({ type: 'chat', text }))
@@ -112,5 +131,17 @@ export function sendChat(text) {
 export function sendAnnounce(text) {
   if (socket && socket.readyState === WebSocket.OPEN) {
     socket.send(JSON.stringify({ type: 'announce', text }))
+  }
+}
+
+export function sendMow() {
+  if (socket && socket.readyState === WebSocket.OPEN) {
+    socket.send(JSON.stringify({ type: 'mow' }))
+  }
+}
+
+export function sendGift(optionId) {
+  if (socket && socket.readyState === WebSocket.OPEN) {
+    socket.send(JSON.stringify({ type: 'gift', optionId }))
   }
 }

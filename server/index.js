@@ -1,12 +1,34 @@
 import { WebSocketServer } from 'ws'
 import { randomUUID } from 'node:crypto'
+import { readFileSync, writeFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
+import path from 'node:path'
 import { RingBuffer } from './ringBuffer.js'
+import { giftOptions, INITIAL_POINTS } from '../src/data/seed.js'
 
 // Hosting platforms (Railway/Render/etc.) inject PORT and expect the app to
 // listen on it; CHAT_PORT is for manual/local overrides, 8787 is the plain-local default.
 const PORT = process.env.PORT || process.env.CHAT_PORT || 8787
 const MAX_HISTORY = 50
 const MAX_MESSAGE_LENGTH = 500
+
+// All connected clients share one points pool. Persisted to disk so a server
+// restart doesn't reset everyone back to INITIAL_POINTS.
+const POINTS_FILE = path.join(path.dirname(fileURLToPath(import.meta.url)), 'points.json')
+
+function loadPoints() {
+  try {
+    return JSON.parse(readFileSync(POINTS_FILE, 'utf-8')).points
+  } catch {
+    return INITIAL_POINTS
+  }
+}
+
+function savePoints() {
+  writeFileSync(POINTS_FILE, JSON.stringify({ points }))
+}
+
+let points = loadPoints()
 
 const ADJECTIVES = ['노란', '초록', '파란', '보라', '분홍', '주황', '하얀', '까만']
 const NOUNS = ['민들레', '나뭇잎', '구름', '고양이', '토끼', '바람', '고슴도치', '수달']
@@ -49,6 +71,7 @@ wss.on('connection', (ws) => {
       selfId: id,
       messages: history.toArray(),
       participantCount: clients.size,
+      points,
     })
   )
 
@@ -92,6 +115,22 @@ wss.on('connection', (ws) => {
       const notice = { type: 'system', id: randomUUID(), text }
       pushHistory(notice)
       broadcast(notice)
+      return
+    }
+
+    if (data.type === 'mow') {
+      points += 10
+      savePoints()
+      broadcast({ type: 'points', points })
+      return
+    }
+
+    if (data.type === 'gift') {
+      const option = giftOptions.find((o) => o.id === data.optionId)
+      if (!option || points < option.price) return
+      points -= option.price
+      savePoints()
+      broadcast({ type: 'points', points })
     }
   })
 

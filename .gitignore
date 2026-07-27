@@ -316,6 +316,9 @@ FakesAssemblies/
 node_modules/
 dist/
 
+# Persisted shared points pool (runtime data, not source)
+server/points.json
+
 # Vite env files (local secrets/URLs) — .env.example stays tracked
 .env.local
 .env.*.local
