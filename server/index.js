@@ -71,7 +71,7 @@ function randomColor() {
 // Chat and gift-related actions (mow/gift/the system announce a gift posts)
 // are tracked as two independent buckets — sending a burst of gifts
 // shouldn't lock you out of chatting, and vice versa.
-const RATE_LIMIT_WINDOW_MS = 2000
+const RATE_LIMIT_WINDOW_MS = 10000
 const RATE_LIMIT_MAX = 10
 const RATE_LIMIT_PENALTY_MS = 2 * 60 * 1000
 
