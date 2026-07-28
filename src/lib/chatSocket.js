@@ -58,8 +58,8 @@ function emitPoints() {
   pointsListeners.forEach((fn) => fn(points))
 }
 
-function emitRateLimit(retryAfterMs) {
-  const info = { retryAfterMs, at: Date.now() }
+function emitRateLimit(category, retryAfterMs) {
+  const info = { category, retryAfterMs, at: Date.now() }
   rateLimitListeners.forEach((fn) => fn(info))
 }
 
@@ -105,7 +105,7 @@ function connect() {
     }
 
     if (data.type === 'rate_limited') {
-      emitRateLimit(data.retryAfterMs)
+      emitRateLimit(data.category, data.retryAfterMs)
     }
   }
 

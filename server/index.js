@@ -62,32 +62,44 @@ function randomColor() {
   return COLORS[Math.floor(Math.random() * COLORS.length)]
 }
 
-// Per-connection rate limit: at most RATE_LIMIT_MAX messages (of any type —
-// chat, mow, gift, ...) per RATE_LIMIT_WINDOW_MS. Tripping that burst limit
-// locks the connection out for RATE_LIMIT_PENALTY_MS before it can send
-// anything again. Blocks spamming the shared points pool or flooding chat,
-// without trusting the client to police itself.
+// Per-connection rate limit: at most RATE_LIMIT_MAX messages per
+// RATE_LIMIT_WINDOW_MS. Tripping that burst limit locks the connection out
+// for RATE_LIMIT_PENALTY_MS before it can send anything in that category
+// again. Blocks spamming the shared points pool or flooding chat, without
+// trusting the client to police itself.
+//
+// Chat and gift-related actions (mow/gift/the system announce a gift posts)
+// are tracked as two independent buckets — sending a burst of gifts
+// shouldn't lock you out of chatting, and vice versa.
 const RATE_LIMIT_WINDOW_MS = 2000
 const RATE_LIMIT_MAX = 10
 const RATE_LIMIT_PENALTY_MS = 2 * 60 * 1000
 
+function categoryFor(type) {
+  return type === 'gift' || type === 'mow' || type === 'announce' ? 'gift' : 'chat'
+}
+
+function createRateLimitState() {
+  return { windowStart: Date.now(), messageCount: 0, blockedUntil: 0 }
+}
+
 // Returns ms remaining before the client may send again, or 0 if the message
 // is allowed (and counts toward the current window).
-function checkRateLimit(client) {
+function checkRateLimit(state) {
   const now = Date.now()
 
-  if (client.blockedUntil > now) {
-    return client.blockedUntil - now
+  if (state.blockedUntil > now) {
+    return state.blockedUntil - now
   }
 
-  if (now - client.windowStart >= RATE_LIMIT_WINDOW_MS) {
-    client.windowStart = now
-    client.messageCount = 0
+  if (now - state.windowStart >= RATE_LIMIT_WINDOW_MS) {
+    state.windowStart = now
+    state.messageCount = 0
   }
-  client.messageCount += 1
+  state.messageCount += 1
 
-  if (client.messageCount > RATE_LIMIT_MAX) {
-    client.blockedUntil = now + RATE_LIMIT_PENALTY_MS
+  if (state.messageCount > RATE_LIMIT_MAX) {
+    state.blockedUntil = now + RATE_LIMIT_PENALTY_MS
     return RATE_LIMIT_PENALTY_MS
   }
 
@@ -95,7 +107,7 @@ function checkRateLimit(client) {
 }
 
 const wss = new WebSocketServer({ port: PORT })
-const clients = new Map() // ws -> { id, nickname, color, windowStart, messageCount, blockedUntil }
+const clients = new Map() // ws -> { id, nickname, color, rateLimits: { chat, gift } }
 const history = new RingBuffer(MAX_HISTORY)
 for (const entry of loadHistoryEntries()) history.push(entry)
 
@@ -115,7 +127,12 @@ wss.on('connection', (ws) => {
   const id = randomUUID()
   const nickname = randomNickname()
   const color = randomColor()
-  clients.set(ws, { id, nickname, color, windowStart: Date.now(), messageCount: 0, blockedUntil: 0 })
+  clients.set(ws, {
+    id,
+    nickname,
+    color,
+    rateLimits: { chat: createRateLimitState(), gift: createRateLimitState() },
+  })
 
   ws.send(
     JSON.stringify({
@@ -137,17 +154,18 @@ wss.on('connection', (ws) => {
   broadcast(joinNotice)
 
   ws.on('message', (raw) => {
-    const client = clients.get(ws)
-    const retryAfterMs = checkRateLimit(client)
-    if (retryAfterMs > 0) {
-      ws.send(JSON.stringify({ type: 'rate_limited', retryAfterMs }))
-      return
-    }
-
     let data
     try {
       data = JSON.parse(raw)
     } catch {
+      return
+    }
+
+    const client = clients.get(ws)
+    const category = categoryFor(data.type)
+    const retryAfterMs = checkRateLimit(client.rateLimits[category])
+    if (retryAfterMs > 0) {
+      ws.send(JSON.stringify({ type: 'rate_limited', category, retryAfterMs }))
       return
     }
 

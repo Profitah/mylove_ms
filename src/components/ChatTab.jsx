@@ -6,7 +6,12 @@ export default function ChatTab({ messages, onSend, participantCount, connected 
   const [cooldown, setCooldown] = useState(null)
   const [cooldownMs, setCooldownMs] = useState(0)
 
-  useEffect(() => subscribeRateLimited(setCooldown), [])
+  useEffect(
+    () => subscribeRateLimited((info) => {
+      if (info.category === 'chat') setCooldown(info)
+    }),
+    []
+  )
 
   useEffect(() => {
     if (!cooldown) return
