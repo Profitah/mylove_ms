@@ -33,7 +33,6 @@ export default function GiftTab({ points, onMow, onGift, cooldown }) {
   const cooldownSeconds = Math.ceil(cooldownMs / 1000)
 
   const handleMow = () => {
-    if (cooldownActive) return
     onMow()
     setFeedback('좋았어, 돈이 생겼다! (+1000P)')
     setPulse(true)
@@ -64,7 +63,6 @@ export default function GiftTab({ points, onMow, onGift, cooldown }) {
           <button
             type="button"
             className={`mow-btn${pulse ? ' pulse' : ''}`}
-            disabled={cooldownActive}
             onClick={handleMow}
           >
             제초하기

@@ -75,8 +75,11 @@ const RATE_LIMIT_WINDOW_MS = 2000
 const RATE_LIMIT_MAX = 10
 const RATE_LIMIT_PENALTY_MS = 2 * 60 * 1000
 
+// mow (제초하기) is intentionally excluded from rate limiting — returns null,
+// which skips the check entirely.
 function categoryFor(type) {
-  return type === 'gift' || type === 'mow' || type === 'announce' ? 'gift' : 'chat'
+  if (type === 'mow') return null
+  return type === 'gift' || type === 'announce' ? 'gift' : 'chat'
 }
 
 function createRateLimitState() {
@@ -163,10 +166,12 @@ wss.on('connection', (ws) => {
 
     const client = clients.get(ws)
     const category = categoryFor(data.type)
-    const retryAfterMs = checkRateLimit(client.rateLimits[category])
-    if (retryAfterMs > 0) {
-      ws.send(JSON.stringify({ type: 'rate_limited', category, retryAfterMs }))
-      return
+    if (category) {
+      const retryAfterMs = checkRateLimit(client.rateLimits[category])
+      if (retryAfterMs > 0) {
+        ws.send(JSON.stringify({ type: 'rate_limited', category, retryAfterMs }))
+        return
+      }
     }
 
     if (data.type === 'chat' && typeof data.text === 'string') {
