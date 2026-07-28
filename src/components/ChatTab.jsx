@@ -1,7 +1,24 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { subscribeRateLimited } from '../lib/chatSocket'
 
 export default function ChatTab({ messages, onSend, participantCount, connected }) {
   const [draft, setDraft] = useState('')
+  const [cooldown, setCooldown] = useState(null)
+  const [cooldownMs, setCooldownMs] = useState(0)
+
+  useEffect(() => subscribeRateLimited(setCooldown), [])
+
+  useEffect(() => {
+    if (!cooldown) return
+    const until = cooldown.at + cooldown.retryAfterMs
+    const tick = () => setCooldownMs(Math.max(0, until - Date.now()))
+    tick()
+    const interval = setInterval(tick, 1000)
+    return () => clearInterval(interval)
+  }, [cooldown])
+
+  const cooldownActive = cooldownMs > 0
+  const cooldownSeconds = Math.ceil(cooldownMs / 1000)
 
   const handleSubmit = (e) => {
     e.preventDefault()
@@ -11,6 +28,10 @@ export default function ChatTab({ messages, onSend, participantCount, connected 
 
   return (
     <div className="chat-tab">
+      {cooldownActive && (
+        <div className="toast">메시지를 너무 빨리 보냈어요! {cooldownSeconds}초 후 다시 시도해주세요</div>
+      )}
+
       <div className="chat-header">
         채팅방 · 익명 {participantCount}명
         {!connected && <span className="connection-status">연결 중...</span>}
