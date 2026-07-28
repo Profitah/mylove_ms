@@ -25,7 +25,7 @@ export default function GiftTab({ points, onMow, onGift, cooldown }) {
     const until = cooldown.at + cooldown.retryAfterMs
     const tick = () => setCooldownMs(Math.max(0, until - Date.now()))
     tick()
-    const interval = setInterval(tick, 200)
+    const interval = setInterval(tick, 1000)
     return () => clearInterval(interval)
   }, [cooldown])
 

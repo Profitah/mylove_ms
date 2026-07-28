@@ -62,25 +62,40 @@ function randomColor() {
   return COLORS[Math.floor(Math.random() * COLORS.length)]
 }
 
-// Per-connection fixed-window rate limit: at most RATE_LIMIT_MAX messages
-// (of any type — chat, mow, gift, ...) per RATE_LIMIT_WINDOW_MS. Blocks
-// spamming the shared points pool or flooding chat, without trusting the
-// client to police itself.
+// Per-connection rate limit: at most RATE_LIMIT_MAX messages (of any type —
+// chat, mow, gift, ...) per RATE_LIMIT_WINDOW_MS. Tripping that burst limit
+// locks the connection out for RATE_LIMIT_PENALTY_MS before it can send
+// anything again. Blocks spamming the shared points pool or flooding chat,
+// without trusting the client to police itself.
 const RATE_LIMIT_WINDOW_MS = 2000
 const RATE_LIMIT_MAX = 10
+const RATE_LIMIT_PENALTY_MS = 2 * 60 * 1000
 
-function isRateLimited(client) {
+// Returns ms remaining before the client may send again, or 0 if the message
+// is allowed (and counts toward the current window).
+function checkRateLimit(client) {
   const now = Date.now()
+
+  if (client.blockedUntil > now) {
+    return client.blockedUntil - now
+  }
+
   if (now - client.windowStart >= RATE_LIMIT_WINDOW_MS) {
     client.windowStart = now
     client.messageCount = 0
   }
   client.messageCount += 1
-  return client.messageCount > RATE_LIMIT_MAX
+
+  if (client.messageCount > RATE_LIMIT_MAX) {
+    client.blockedUntil = now + RATE_LIMIT_PENALTY_MS
+    return RATE_LIMIT_PENALTY_MS
+  }
+
+  return 0
 }
 
 const wss = new WebSocketServer({ port: PORT })
-const clients = new Map() // ws -> { id, nickname, color, windowStart, messageCount }
+const clients = new Map() // ws -> { id, nickname, color, windowStart, messageCount, blockedUntil }
 const history = new RingBuffer(MAX_HISTORY)
 for (const entry of loadHistoryEntries()) history.push(entry)
 
@@ -100,7 +115,7 @@ wss.on('connection', (ws) => {
   const id = randomUUID()
   const nickname = randomNickname()
   const color = randomColor()
-  clients.set(ws, { id, nickname, color, windowStart: Date.now(), messageCount: 0 })
+  clients.set(ws, { id, nickname, color, windowStart: Date.now(), messageCount: 0, blockedUntil: 0 })
 
   ws.send(
     JSON.stringify({
@@ -123,8 +138,8 @@ wss.on('connection', (ws) => {
 
   ws.on('message', (raw) => {
     const client = clients.get(ws)
-    if (isRateLimited(client)) {
-      const retryAfterMs = RATE_LIMIT_WINDOW_MS - (Date.now() - client.windowStart)
+    const retryAfterMs = checkRateLimit(client)
+    if (retryAfterMs > 0) {
       ws.send(JSON.stringify({ type: 'rate_limited', retryAfterMs }))
       return
     }
