@@ -25,6 +25,7 @@ let points = 0
 const messageListeners = new Set()
 const connectionListeners = new Set()
 const pointsListeners = new Set()
+const rateLimitListeners = new Set()
 
 function normalize(entry) {
   if (entry.type === 'system') {
@@ -55,6 +56,11 @@ function emitConnection() {
 
 function emitPoints() {
   pointsListeners.forEach((fn) => fn(points))
+}
+
+function emitRateLimit(retryAfterMs) {
+  const info = { retryAfterMs, at: Date.now() }
+  rateLimitListeners.forEach((fn) => fn(info))
 }
 
 function connect() {
@@ -95,6 +101,11 @@ function connect() {
     if (data.type === 'points') {
       points = data.points
       emitPoints()
+      return
+    }
+
+    if (data.type === 'rate_limited') {
+      emitRateLimit(data.retryAfterMs)
     }
   }
 
@@ -126,6 +137,11 @@ export function subscribeConnection(fn) {
 export function subscribePoints(fn) {
   pointsListeners.add(fn)
   return () => pointsListeners.delete(fn)
+}
+
+export function subscribeRateLimited(fn) {
+  rateLimitListeners.add(fn)
+  return () => rateLimitListeners.delete(fn)
 }
 
 export function sendChat(text) {

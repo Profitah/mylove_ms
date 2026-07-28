@@ -62,8 +62,25 @@ function randomColor() {
   return COLORS[Math.floor(Math.random() * COLORS.length)]
 }
 
+// Per-connection fixed-window rate limit: at most RATE_LIMIT_MAX messages
+// (of any type — chat, mow, gift, ...) per RATE_LIMIT_WINDOW_MS. Blocks
+// spamming the shared points pool or flooding chat, without trusting the
+// client to police itself.
+const RATE_LIMIT_WINDOW_MS = 2000
+const RATE_LIMIT_MAX = 10
+
+function isRateLimited(client) {
+  const now = Date.now()
+  if (now - client.windowStart >= RATE_LIMIT_WINDOW_MS) {
+    client.windowStart = now
+    client.messageCount = 0
+  }
+  client.messageCount += 1
+  return client.messageCount > RATE_LIMIT_MAX
+}
+
 const wss = new WebSocketServer({ port: PORT })
-const clients = new Map() // ws -> { id, nickname, color }
+const clients = new Map() // ws -> { id, nickname, color, windowStart, messageCount }
 const history = new RingBuffer(MAX_HISTORY)
 for (const entry of loadHistoryEntries()) history.push(entry)
 
@@ -83,7 +100,7 @@ wss.on('connection', (ws) => {
   const id = randomUUID()
   const nickname = randomNickname()
   const color = randomColor()
-  clients.set(ws, { id, nickname, color })
+  clients.set(ws, { id, nickname, color, windowStart: Date.now(), messageCount: 0 })
 
   ws.send(
     JSON.stringify({
@@ -105,6 +122,13 @@ wss.on('connection', (ws) => {
   broadcast(joinNotice)
 
   ws.on('message', (raw) => {
+    const client = clients.get(ws)
+    if (isRateLimited(client)) {
+      const retryAfterMs = RATE_LIMIT_WINDOW_MS - (Date.now() - client.windowStart)
+      ws.send(JSON.stringify({ type: 'rate_limited', retryAfterMs }))
+      return
+    }
+
     let data
     try {
       data = JSON.parse(raw)

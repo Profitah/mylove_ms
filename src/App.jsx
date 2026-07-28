@@ -9,7 +9,7 @@ import './App.css'
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('chat')
-  const { points, mow, gift } = usePoints()
+  const { points, mow, gift, cooldown } = usePoints()
   const { messages, sendMessage, addSystemMessage, participantCount, connected } =
     useChatMessages()
 
@@ -33,7 +33,7 @@ export default function App() {
             connected={connected}
           />
         ) : (
-          <GiftTab points={points} onMow={handleMow} onGift={handleGift} />
+          <GiftTab points={points} onMow={handleMow} onGift={handleGift} cooldown={cooldown} />
         )}
       </main>
 

@@ -3,9 +3,10 @@ import { giftOptions } from '../data/seed'
 import hachiwareImg from '../assets/하치와레.webp'
 import BoomButton from './BoomButton'
 
-export default function GiftTab({ points, onMow, onGift }) {
+export default function GiftTab({ points, onMow, onGift, cooldown }) {
   const [feedback, setFeedback] = useState('')
   const [pulse, setPulse] = useState(false)
+  const [cooldownMs, setCooldownMs] = useState(0)
 
   useEffect(() => {
     if (!feedback) return
@@ -19,13 +20,27 @@ export default function GiftTab({ points, onMow, onGift }) {
     return () => clearTimeout(timer)
   }, [pulse])
 
+  useEffect(() => {
+    if (!cooldown) return
+    const until = cooldown.at + cooldown.retryAfterMs
+    const tick = () => setCooldownMs(Math.max(0, until - Date.now()))
+    tick()
+    const interval = setInterval(tick, 200)
+    return () => clearInterval(interval)
+  }, [cooldown])
+
+  const cooldownActive = cooldownMs > 0
+  const cooldownSeconds = Math.ceil(cooldownMs / 1000)
+
   const handleMow = () => {
+    if (cooldownActive) return
     onMow()
     setFeedback('좋았어, 돈이 생겼다! (+1000P)')
     setPulse(true)
   }
 
   const handleGift = (option) => {
+    if (cooldownActive) return
     if (points < option.price) {
       setFeedback('포인트가 부족해요')
       return
@@ -49,12 +64,15 @@ export default function GiftTab({ points, onMow, onGift }) {
           <button
             type="button"
             className={`mow-btn${pulse ? ' pulse' : ''}`}
+            disabled={cooldownActive}
             onClick={handleMow}
           >
             제초하기
           </button>
         </div>
-        <div className="feedback">{feedback}</div>
+        <div className="feedback">
+          {cooldownActive ? `너무 빨라요! ${cooldownSeconds}초 후 다시 시도해주세요` : feedback}
+        </div>
       </div>
 
       <div className="gift-options">
@@ -62,7 +80,7 @@ export default function GiftTab({ points, onMow, onGift }) {
           <BoomButton
             key={option.id}
             className="gift-card"
-            disabled={points < option.price}
+            disabled={points < option.price || cooldownActive}
             onClick={() => handleGift(option)}
           >
             <div className="gift-icon" style={{ background: option.color }} />
